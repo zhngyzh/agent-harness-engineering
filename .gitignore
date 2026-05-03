@@ -1,0 +1,16 @@
+node_modules/
+dist/
+*.env
+.env.local
+.dbs/
+sessions/
+.transcripts/
+workspace/.sessions/
+workspace/.agents/
+workspace/memory/
+workspace/cron/
+workspace/delivery-queue/
+*.db
+*.db-journal
+app/.next/
+app/out/

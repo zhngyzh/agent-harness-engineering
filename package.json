@@ -1,0 +1,39 @@
+{
+  "name": "agent-harness-engineering",
+  "version": "0.1.0",
+  "description": "Production-grade Agent Harness Engineering Platform - TypeScript implementation",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "tsx src/entrypoints/cli.ts",
+    "build": "tsup src/**/*.ts --format esm --dts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "web": "next dev app",
+    "web:build": "next build app",
+    "eval": "tsx src/entrypoints/eval.ts",
+    "lint": "biome check src/ tests/",
+    "format": "biome format --write src/ tests/"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "better-sqlite3": "^11.0.0",
+    "ws": "^8.18.0",
+    "yaml": "^2.6.0",
+    "chalk": "^5.3.0",
+    "croner": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "tsup": "^8.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0",
+    "@biomejs/biome": "^1.9.0"
+  }
+}
