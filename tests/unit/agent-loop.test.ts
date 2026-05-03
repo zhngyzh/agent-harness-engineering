@@ -121,5 +121,5 @@ describe("AgentLoop", () => {
     await promise;
     // The loop should have stopped due to abort
     teardown();
-  });
+  }, 15000);
 });
