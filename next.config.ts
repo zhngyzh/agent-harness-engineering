@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  outputFileTracingRoot: "/home/zhangyzh/projects/agent-harness-engineering",
+  /* outputFileTracingRoot is auto-detected by Next.js 15+ */
 };
 
 export default nextConfig;

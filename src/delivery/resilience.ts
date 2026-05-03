@@ -68,8 +68,6 @@ export class ProfileManager {
 
       this.log.info(`Profile rotated: ${this.profiles[startIndex].label} -> ${profile.label} (${reason})`);
       return profile;
-
-      if (this.currentIndex === startIndex) break;
     }
 
     this.log.error("All profiles exhausted");

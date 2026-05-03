@@ -13,9 +13,13 @@ export class AnthropicClient implements LLMClient {
   private _model: string;
 
   constructor(apiKey?: string, baseUrl?: string, model?: string) {
+    const key = apiKey || process.env.ANTHROPIC_API_KEY;
     this.client = new Anthropic({
-      apiKey: apiKey || process.env.ANTHROPIC_API_KEY,
+      apiKey: key,
       baseURL: baseUrl || process.env.ANTHROPIC_BASE_URL || undefined,
+      defaultHeaders: {
+        Authorization: `Bearer ${key}`,
+      },
     });
     this._model = model || process.env.MODEL_ID || "claude-sonnet-4-20250514";
   }

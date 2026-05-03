@@ -68,8 +68,9 @@ export const BOOTSTRAP_FILES = [
 /** Session file extension */
 export const SESSION_FILE_EXT = ".jsonl";
 
-/** Session metadata file name */
-export const SESSION_META_FILE = "_meta.json";
+/** Session metadata file name template (per-session: {sessionId}_meta.json) */
+export const SESSION_META_FILE_PREFIX = "";
+export const SESSION_META_FILE_SUFFIX = "_meta.json";
 
 // ---------- Security ----------
 /** Patterns that indicate prompt injection attempts */

@@ -54,19 +54,29 @@ export class SubagentManager {
     const startTime = Date.now();
     this.log.info(`Subagent spawned: ${id} — ${options.task.slice(0, 80)}`);
 
+    const loop = this.buildLoop(id, options);
     try {
-      const result = await this.runSubagent(id, options, abortController.signal);
+      const result = await this.runSubagent(loop, id, options, abortController.signal);
       result.durationMs = Date.now() - startTime;
       this.log.info(`Subagent completed: ${id} (${result.turns} turns, ${result.durationMs}ms)`);
       return result;
     } catch (err) {
       const durationMs = Date.now() - startTime;
       this.log.error(`Subagent failed: ${id}`, { error: (err as Error).message });
+      const messages = loop.getMessages();
+      const turns = messages.filter((m) => m.role === "assistant").length;
+      const lastAssistant = messages.filter((m) => m.role === "assistant").pop();
+      let summary = "";
+      if (lastAssistant) {
+        summary = Array.isArray(lastAssistant.content)
+          ? (lastAssistant.content as { type: string; text?: string }[]).map((c) => (c.type === "text" ? c.text ?? "" : `[${c.type}]`)).join(" ").slice(0, 200)
+          : String(lastAssistant.content).slice(0, 200);
+      }
       return {
         id,
         status: "failed",
-        summary: "",
-        turns: 0,
+        summary,
+        turns,
         durationMs,
         error: (err as Error).message,
       };
@@ -98,23 +108,14 @@ export class SubagentManager {
   // Private
   // ============================================================
 
-  private async runSubagent(
-    id: string,
-    options: SubagentOptions,
-    signal: AbortSignal,
-  ): Promise<SubagentResult> {
-    const systemPrompt = options.systemPrompt || this.defaultSystemPrompt;
-    const maxTurns = options.maxTurns || 20;
-    const timeoutMs = options.timeoutMs || 120_000; // 2 min default
-
-    // Create isolated agent loop
+  private buildLoop(id: string, options: SubagentOptions): AgentLoop {
     const llm = this.llmClientFactory();
-    const loop = new AgentLoop({
+    return new AgentLoop({
       config: {
         name: id,
         model: "claude-sonnet-4-20250514",
         maxTokens: 4096,
-        maxTurns,
+        maxTurns: options.maxTurns || 20,
         maxContextTokens: 50_000,
         language: "zh",
         channel: "cli" as const,
@@ -124,26 +125,31 @@ export class SubagentManager {
       llm,
       eventBus: new EventBus(),
     });
+  }
 
-    // Set up timeout
+  private async runSubagent(
+    loop: AgentLoop,
+    id: string,
+    options: SubagentOptions,
+    signal: AbortSignal,
+  ): Promise<SubagentResult> {
+    const systemPrompt = options.systemPrompt || this.defaultSystemPrompt;
+    const timeoutMs = options.timeoutMs || 120_000;
+
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error("Subagent timeout")), timeoutMs);
     });
 
-    // Set up abort
     const abortPromise = new Promise<never>((_, reject) => {
       signal.addEventListener("abort", () => reject(new Error("Subagent aborted")));
     });
 
-    // Run the subagent
     const runPromise = loop.sendMessage(options.task, systemPrompt);
 
     const response = await Promise.race([runPromise, timeoutPromise, abortPromise]);
 
     const messages = loop.getMessages();
     const turns = messages.filter((m) => m.role === "assistant").length;
-
-    // Generate summary
     const summary = await this.summarize(response);
 
     return {
@@ -151,7 +157,7 @@ export class SubagentManager {
       status: "completed",
       summary,
       turns,
-      durationMs: 0, // Set by caller
+      durationMs: 0,
     };
   }
 

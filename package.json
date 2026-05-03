@@ -12,8 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "web": "next dev ./app",
-    "web:build": "next build ./app",
+    "web": "next dev",
+    "web:build": "next build",
     "eval": "tsx src/entrypoints/eval.ts",
     "lint": "biome check src/ tests/",
     "format": "biome format --write src/ tests/"

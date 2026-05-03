@@ -13,7 +13,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Message, SessionLine, SessionMeta } from "./types.js";
-import { SESSION_FILE_EXT, SESSION_META_FILE } from "./constants.js";
+import { SESSION_FILE_EXT, SESSION_META_FILE_PREFIX, SESSION_META_FILE_SUFFIX } from "./constants.js";
 
 export class SessionStore {
   readonly sessionId: string;
@@ -88,7 +88,7 @@ export class SessionStore {
 
   /** Get session metadata */
   getMeta(): SessionMeta | null {
-    const metaPath = join(this.sessionDir, SESSION_META_FILE);
+    const metaPath = this.metaFilePath();
     if (!existsSync(metaPath)) return null;
     return JSON.parse(readFileSync(metaPath, "utf-8"));
   }
@@ -142,8 +142,12 @@ export class SessionStore {
     return content.split("\n").filter((l) => l.trim()).length;
   }
 
+  private metaFilePath(): string {
+    return join(this.sessionDir, `${SESSION_META_FILE_PREFIX}${this.sessionId}${SESSION_META_FILE_SUFFIX}`);
+  }
+
   private writeMeta(meta: SessionMeta): void {
-    const metaPath = join(this.sessionDir, SESSION_META_FILE);
+    const metaPath = this.metaFilePath();
     writeFileSync(metaPath, JSON.stringify(meta, null, 2));
   }
 
