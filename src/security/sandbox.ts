@@ -29,8 +29,8 @@
  *   - All violations are logged
  */
 
-import { existsSync, realpathSync } from "node:fs";
-import { join, resolve, relative, isAbsolute } from "node:path";
+import { realpathSync } from "node:fs";
+import { resolve, relative, isAbsolute } from "node:path";
 import { Logger } from "../observability/logger.js";
 
 export interface SandboxConfig {

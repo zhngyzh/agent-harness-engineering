@@ -16,7 +16,7 @@
  *   - Cron uses croniter-compatible expressions
  */
 
-import { existsSync, mkdirSync, appendFileSync, readFileSync } from "node:fs";
+import { mkdirSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { Logger } from "../observability/logger.js";
 import { CommandQueue } from "./lanes.js";
@@ -51,8 +51,8 @@ export class CronScheduler {
   private maxConsecutiveErrors = 5;
 
   constructor(
-    private workspaceDir: string,
-    private commandQueue: CommandQueue,
+    workspaceDir: string,
+    _commandQueue: CommandQueue,
     private onJobRun: (job: CronJob) => Promise<void>,
   ) {
     this.runLogDir = join(workspaceDir, "cron");

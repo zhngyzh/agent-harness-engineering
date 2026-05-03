@@ -59,7 +59,7 @@ export class SelfReviewAnalyzer {
   analyze(
     sessionId: string,
     toolSpans: ToolSpan[],
-    events: AgentEvent[],
+    _events: AgentEvent[],
   ): ReviewReport {
     const findings: ReviewFinding[] = [];
 

@@ -12,7 +12,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import type { AgentConfig, LLMClient, Message } from "../core/types.js";
+import type { LLMClient } from "../core/types.js";
 import { AgentLoop } from "../core/agent-loop.js";
 import { EventBus } from "../observability/events.js";
 import { Logger } from "../observability/logger.js";

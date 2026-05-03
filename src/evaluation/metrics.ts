@@ -22,7 +22,7 @@
  *   - Results saved to .eval/metrics.jsonl for tracking over time
  */
 
-import { existsSync, mkdirSync, appendFileSync } from "node:fs";
+import { mkdirSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { Logger } from "../observability/logger.js";
 

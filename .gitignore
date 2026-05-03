@@ -12,5 +12,5 @@ workspace/cron/
 workspace/delivery-queue/
 *.db
 *.db-journal
-app/.next/
+.next/
 app/out/

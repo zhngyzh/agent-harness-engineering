@@ -21,7 +21,7 @@
  *   - All decisions are logged for audit
  */
 
-import { existsSync, mkdirSync, appendFileSync } from "node:fs";
+import { mkdirSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { Logger } from "../observability/logger.js";
 

@@ -16,7 +16,7 @@
  *   - Always draft-first, human-approve-second
  */
 
-import { existsSync, mkdirSync, appendFileSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Logger } from "../observability/logger.js";
 import type { ToolSpan } from "../observability/tracing.js";

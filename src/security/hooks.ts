@@ -21,7 +21,7 @@
  *   - All hook executions are logged
  */
 
-import { existsSync, mkdirSync, appendFileSync } from "node:fs";
+import { mkdirSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { Logger } from "../observability/logger.js";
 
@@ -113,7 +113,7 @@ export class HookSystem {
    * Unregister a hook by ID.
    */
   unregister(hookId: string): boolean {
-    for (const [point, pointHooks] of this.hooks) {
+    for (const [_point, pointHooks] of this.hooks) {
       const idx = pointHooks.findIndex((h) => h.id === hookId);
       if (idx !== -1) {
         pointHooks.splice(idx, 1);

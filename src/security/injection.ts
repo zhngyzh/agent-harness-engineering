@@ -26,7 +26,7 @@
  *   - All detections are logged for analysis
  */
 
-import { existsSync, mkdirSync, appendFileSync } from "node:fs";
+import { mkdirSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { Logger } from "../observability/logger.js";
 import { INJECTION_PATTERNS } from "../core/constants.js";
@@ -221,7 +221,7 @@ export class InjectionDefense {
     return riskLevels[maxScore];
   }
 
-  private sanitize(input: string, findings: InjectionFinding[]): string {
+  private sanitize(input: string, _findings: InjectionFinding[]): string {
     let sanitized = input;
 
     // Remove zero-width characters

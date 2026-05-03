@@ -17,7 +17,7 @@
  *   - Transparent: task board is human-readable JSONL
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, readdirSync, appendFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { Logger } from "../observability/logger.js";
 
@@ -84,13 +84,15 @@ export class TaskBoard {
     const tasks = this.readAll();
     const task = tasks.find((t) => t.id === taskId);
 
-    if (!task || task.status !== "pending") return null;
+    if (!task) return null;
 
-    // Check for timeout on claimed tasks
+    // Check for timeout on previously claimed tasks
     if (task.status === "claimed" && task.claimedAt) {
       const elapsed = Date.now() - new Date(task.claimedAt).getTime();
       if (elapsed < task.timeoutMs) return null; // Still within timeout
-      // Timed out, can be re-claimed
+      // Timed out, fall through to re-claim
+    } else if (task.status !== "pending") {
+      return null;
     }
 
     task.status = "claimed";

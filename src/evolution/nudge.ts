@@ -19,7 +19,7 @@
  *   - Temporal decay: old nudges fade after 5 turns
  */
 
-import { existsSync, mkdirSync, appendFileSync, readdirSync, readFileSync } from "node:fs";
+import { mkdirSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { Logger } from "../observability/logger.js";
 import type { ReviewReport } from "./self-review.js";
