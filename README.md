@@ -2,15 +2,12 @@
 
 > 生产级 AI Agent Harness 工程平台 — TypeScript 实现
 
-Agent Harness Engineering 是一个全栈 TypeScript 平台，将 Agent 原理、Harness 工程、Context 工程、Skill 设计、自进化和安全工程的最佳实践落地为可运行代码，配备 Next.js 控制面板。
+Agent Harness Engineering 是一个 TypeScript 平台，将 Agent 原理、Harness 工程、Context 工程、Skill 设计、自进化和安全工程的最佳实践落地为可运行代码。
 
 ## 架构总览
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│                  Next.js 控制面板                     │
-│         Dashboard / Agents / Sessions / Skills       │
-├──────────────────────────────────────────────────────┤
 │                   Channels 通道层                     │
 │              CLI REPL / WebSocket Gateway             │
 ├──────────────────────────────────────────────────────┤
@@ -30,7 +27,6 @@ Agent Harness Engineering 是一个全栈 TypeScript 平台，将 Agent 原理�
 | 维度 | 选型 |
 |------|------|
 | 语言 | TypeScript (Node.js 20+) |
-| 前端 | Next.js 15 + React 19 + Tailwind CSS 4 |
 | API 客户端 | @anthropic-ai/sdk |
 | 存储 | JSONL + SQLite (better-sqlite3) |
 | 测试 | Vitest |
@@ -54,14 +50,6 @@ agent-harness-engineering/
 │   ├── security/          # 安全层：权限引擎、注入防御、Hook 系统、沙箱隔离
 │   └── entrypoints/       # 入口点：CLI、Eval
 │
-├── app/                   # Next.js 控制面板
-│   ├── page.tsx           # 仪表盘首页
-│   ├── agents/page.tsx    # Agent 状态管理
-│   ├── sessions/page.tsx  # 会话历史
-│   ├── skills/page.tsx    # Skill 管理
-│   ├── eval/page.tsx      # 评测结果
-│   └── components/        # 共享 UI 组件
-│
 ├── docs/principles/       # 知识库文档（代码化工程原则）
 │   ├── harness-engineering.md
 │   ├── context-engineering.md
@@ -69,7 +57,7 @@ agent-harness-engineering/
 │   ├── self-improving-agents.md
 │   └── security-engineering.md
 │
-├── tests/unit/            # 15 个测试文件，307 个测试用例
+├── tests/unit/            # 18 个测试文件，336 个测试用例
 └── workspace/             # Agent 工作区模板
 ```
 
@@ -84,10 +72,6 @@ npm test
 
 # 启动 CLI Agent REPL
 npm run dev
-
-# 启动 Next.js 控制面板
-npm run web
-# → http://localhost:3000
 
 # 类型检查
 npm run typecheck
@@ -153,7 +137,7 @@ npm run typecheck
 ## 测试
 
 ```
-15 个测试文件，307 个测试用例，全部通过 ✓
+18 个测试文件，336 个测试用例，全部通过 ✓
 
 src/core/          → core-types.test.ts, tool-registry.test.ts, session.test.ts, agent-loop.test.ts
 src/context/       → context.test.ts
@@ -168,7 +152,7 @@ src/security/      → security.test.ts
 
 ## 知识库
 
-`docs/principles/` 包含从 6 篇深度技术文章中提炼的工程原则：
+`docs/principles/` 包含从 5 篇深度技术文章中提炼的工程原则：
 
 | 文档 | 来源 | 核心内容 |
 |------|------|----------|

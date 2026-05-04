@@ -1,4 +1,4 @@
-.PHONY: dev build test typecheck web eval lint format install clean
+.PHONY: dev build test typecheck eval lint format install clean
 
 install:
 	npm install
@@ -18,11 +18,6 @@ test:watch:
 typecheck:
 	npx tsc --noEmit
 
-web:
-	npx next dev app
-
-web:build:
-	npx next build app
 
 eval:
 	npx tsx src/entrypoints/eval.ts

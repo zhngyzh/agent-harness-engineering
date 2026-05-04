@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is a **production-grade AI Agent Harness Engineering Platform** written in TypeScript. It implements best practices for Agent engineering -- including Agent Loop, Context Engineering, Skill design, self-evolution, security, concurrency, and observability -- as runnable code, paired with a Next.js dashboard UI.
+This is a **production-grade AI Agent Harness Engineering Platform** written in TypeScript. It implements best practices for Agent engineering -- including Agent Loop, Context Engineering, Skill design, self-evolution, security, concurrency, and observability -- as runnable code.
 
 Primary language: **Chinese (zh)**. Code and comments are in English; user-facing content may be Chinese.
 
@@ -11,7 +11,6 @@ Primary language: **Chinese (zh)**. Code and comments are in English; user-facin
 | Dimension | Choice |
 |---|---|
 | Language | TypeScript (Node.js 20+, ESM modules) |
-| Frontend | Next.js 15 + React 19 + Tailwind CSS 4 |
 | LLM Provider | Anthropic SDK (`@anthropic-ai/sdk`) |
 | Storage | JSONL append-only logs + SQLite (`better-sqlite3`) |
 | Scheduling | Croner for cron expressions |
@@ -36,21 +35,12 @@ agent-harness-engineering/
 │   ├── security/               # Permissions engine, Injection defense, Hook system, Sandbox
 │   ├── observability/          # Event bus, Structured logger, Tracing
 │   └── entrypoints/            # CLI entry point (src/entrypoints/cli.ts)
-├── app/                        # Next.js 15 dashboard
-│   ├── page.tsx                # Dashboard home
-│   ├── agents/page.tsx         # Agent status management
-│   ├── sessions/page.tsx       # Session history
-│   ├── skills/page.tsx         # Skill management
-│   ├── eval/page.tsx           # Evaluation results
-│   └── components/             # Shared UI components (dashboard, agents, sessions, skills, eval)
 ├── tests/unit/                 # 15 test files, 307 test cases (Vitest)
 ├── docs/principles/            # Knowledge base documents (5 deep-dive engineering guides)
 ├── workspace/                  # Agent workspace template (SOUL.md, IDENTITY.md, etc.)
 ├── Makefile                    # Convenience targets (see Commands below)
 ├── tsconfig.json               # TypeScript config (ES2023, bundler resolution, strict)
 ├── vitest.config.ts            # Vitest config: tests/**/*.test.ts, node env, globals
-├── next.config.ts              # Next.js config
-├── postcss.config.mjs          # PostCSS with @tailwindcss/postcss
 └── .env.example                # Environment variables template
 ```
 
@@ -63,8 +53,6 @@ npm run build        # Production build (tsup, ESM + .d.ts)
 npm test             # Run all tests (vitest run)
 npm run test:watch   # Watch mode
 npm run typecheck    # Type check (tsc --noEmit)
-npm run web          # Start Next.js dashboard at http://localhost:3000
-npm run web:build    # Production build for Next.js
 npm run eval         # Run evaluation entry point
 npm run lint         # Biome check src/ tests/
 npm run format       # Biome format --write src/ tests/
@@ -72,7 +60,7 @@ npm run format       # Biome format --write src/ tests/
 
 Or via `make`:
 ```bash
-make install dev build test typecheck web eval lint format clean
+make install dev build test typecheck eval lint format clean
 ```
 
 ## Architecture
@@ -80,9 +68,6 @@ make install dev build test typecheck web eval lint format clean
 The architecture follows a layered pipeline design:
 
 ```
-+----------------------------------------------------------+
-|                 Next.js Dashboard (app/)                  |
-|       Dashboard / Agents / Sessions / Skills / Eval       |
 +----------------------------------------------------------+
 |                   Channels Layer                          |
 |              CLI REPL / WebSocket Gateway                 |
@@ -165,7 +150,7 @@ The architecture follows a layered pipeline design:
 
 ### Observability (`src/observability/`)
 
-- **Events** (`events.ts`): Pub/sub EventBus. Agent loop emits once; tracing, UI, evaluation subscribe independently.
+- **Events** (`events.ts`): Pub/sub EventBus. Agent loop emits once; tracing, evaluation subscribe independently.
 - **Logger** (`logger.ts`): Simple structured logging (debug/info/warn/error) with component labels.
 - **Tracing** (`tracing.ts`): Full execution trace recording -- messages, tool calls/results, token usage, latency. Saved to `.traces/` as JSON. Semantic keyword search support.
 
