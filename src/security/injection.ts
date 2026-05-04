@@ -50,20 +50,22 @@ export interface ScanResult {
 }
 
 // Structural markers that indicate role confusion
+// Note: No /g flag — .test() with /g causes lastIndex state corruption
 const ROLE_MARKERS = [
-  /\b(assistant|system|user|human|ai|bot)\s*:/gi,
-  /\b(you are|i am|act as|pretend to be|roleplay as)\b/gi,
-  /```\s*(system|instructions?|prompt)/gi,
+  /\b(assistant|system|user|human|ai|bot)\s*:/i,
+  /\b(you are|i am|act as|pretend to be|roleplay as)\b/i,
+  /```\s*(system|instructions?|prompt)/i,
 ];
 
 // Delimiter patterns that could confuse the model
+// Note: No /g flag — .test() with /g causes lastIndex state corruption
 const DELIMITER_PATTERNS = [
-  /<system>/gi,
-  /<\/system>/gi,
-  /<instructions?>/gi,
-  /\[SYSTEM\]/gi,
-  /\[INST\]/gi,
-  /###\s*(system|instructions?|human|assistant)/gi,
+  /<system>/i,
+  /<\/system>/i,
+  /<instructions?>/i,
+  /\[SYSTEM\]/i,
+  /\[INST\]/i,
+  /###\s*(system|instructions?|human|assistant)/i,
 ];
 
 // Encoding/obfuscation patterns

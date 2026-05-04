@@ -19,7 +19,7 @@ import { Logger } from "../observability/logger.js";
 
 export interface SubagentResult {
   id: string;
-  status: "completed" | "failed" | "timeout";
+  status: "completed" | "failed" | "timeout" | "aborted";
   summary: string;
   turns: number;
   durationMs: number;
@@ -72,9 +72,11 @@ export class SubagentManager {
           ? (lastAssistant.content as { type: string; text?: string }[]).map((c) => (c.type === "text" ? c.text ?? "" : `[${c.type}]`)).join(" ").slice(0, 200)
           : String(lastAssistant.content).slice(0, 200);
       }
+      const isTimeout = (err as Error).message === "Subagent timeout";
+      const isAborted = (err as Error).message === "Subagent aborted";
       return {
         id,
-        status: "failed",
+        status: isTimeout ? "timeout" : isAborted ? "aborted" : "failed",
         summary,
         turns,
         durationMs,

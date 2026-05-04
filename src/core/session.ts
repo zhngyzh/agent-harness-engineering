@@ -46,9 +46,12 @@ export class SessionStore {
     }
   }
 
-  /** Append messages to the session log */
+  /** Append only new messages to the session log */
   async appendMessages(messages: Message[]): Promise<void> {
-    const lines = messages.map((m) =>
+    const newMessages = messages.slice(this.messageCount);
+    if (newMessages.length === 0) return;
+
+    const lines = newMessages.map((m) =>
       JSON.stringify({
         type: "message" as const,
         data: m,
@@ -60,7 +63,7 @@ export class SessionStore {
       appendFileSync(this.filePath, `${line}\n`, "utf-8");
     }
 
-    this.messageCount += messages.length;
+    this.messageCount = messages.length;
     this.updateMeta({ messageCount: this.messageCount, updatedAt: new Date().toISOString() });
   }
 
@@ -93,17 +96,29 @@ export class SessionStore {
     return JSON.parse(readFileSync(metaPath, "utf-8"));
   }
 
-  /** List all sessions */
+  /** List all sessions — includes sessions with only a meta file (no messages yet) */
   static listSessions(workspaceDir: string): SessionMeta[] {
     const sessionDir = join(workspaceDir, ".sessions");
     if (!existsSync(sessionDir)) return [];
 
-    return readdirSync(sessionDir)
-      .filter((f) => f.endsWith(SESSION_FILE_EXT))
-      .map((f) => {
-        const filePath = join(sessionDir, f);
-        const content = readFileSync(filePath, "utf-8");
-        let messageCount = 0;
+    const allFiles = readdirSync(sessionDir);
+    // Collect session IDs from both .jsonl files and _meta.json files
+    const sessionIds = new Set<string>();
+    for (const f of allFiles) {
+      if (f.endsWith(SESSION_FILE_EXT)) {
+        sessionIds.add(f.replace(SESSION_FILE_EXT, ""));
+      } else if (f.endsWith(SESSION_META_FILE_SUFFIX)) {
+        const id = f.slice(SESSION_META_FILE_PREFIX.length, -SESSION_META_FILE_SUFFIX.length);
+        if (id) sessionIds.add(id);
+      }
+    }
+
+    return Array.from(sessionIds).map((id) => {
+      const jsonlPath = join(sessionDir, `${id}${SESSION_FILE_EXT}`);
+      let messageCount = 0;
+      let createdAt: string | undefined;
+      if (existsSync(jsonlPath)) {
+        const content = readFileSync(jsonlPath, "utf-8");
         for (const line of content.split("\n")) {
           if (!line.trim()) continue;
           try {
@@ -113,16 +128,27 @@ export class SessionStore {
             // skip
           }
         }
-        return {
-          id: f.replace(SESSION_FILE_EXT, ""),
-          agentName: "default",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          messageCount,
-          totalTokens: 0,
-          status: "active" as const,
-        };
-      });
+      }
+      // Prefer meta file for timestamps
+      const metaPath = join(sessionDir, `${SESSION_META_FILE_PREFIX}${id}${SESSION_META_FILE_SUFFIX}`);
+      if (existsSync(metaPath)) {
+        try {
+          const meta = JSON.parse(readFileSync(metaPath, "utf-8"));
+          return { ...meta, messageCount: messageCount || meta.messageCount };
+        } catch {
+          // fall through
+        }
+      }
+      return {
+        id,
+        agentName: "default",
+        createdAt: createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messageCount,
+        totalTokens: 0,
+        status: "active" as const,
+      };
+    });
   }
 
   // ============================================================

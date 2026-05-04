@@ -75,6 +75,11 @@ export class Tracing {
     }
   }
 
+  /** Record token usage for the current trace */
+  addTokens(inputTokens: number, outputTokens: number): void {
+    this.trace.totalTokens += inputTokens + outputTokens;
+  }
+
   save(): void {
     this.trace.endedAt = new Date().toISOString();
     const filePath = join(this.traceDir, `${this.trace.id}.json`);

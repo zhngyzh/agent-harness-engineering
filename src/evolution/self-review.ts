@@ -157,7 +157,7 @@ export class SelfReviewAnalyzer {
     if (!existsSync(this.reviewDir)) return [];
     const reports: ReviewReport[] = [];
     for (const file of readdirSync(this.reviewDir)) {
-      if (!file.endsWith(".json")) continue;
+      if (!file.endsWith(".jsonl")) continue;
       try {
         const content = readFileSync(join(this.reviewDir, file), "utf-8");
         for (const line of content.split("\n")) {
@@ -194,7 +194,8 @@ export class SelfReviewAnalyzer {
   }
 
   private save(report: ReviewReport): void {
-    const filePath = join(this.reviewDir, `${report.id}.json`);
+    const today = new Date().toISOString().slice(0, 10);
+    const filePath = join(this.reviewDir, `reviews-${today}.jsonl`);
     appendFileSync(filePath, `${JSON.stringify(report)}\n`, "utf-8");
     this.log.info(`Review saved: ${report.id} (score: ${report.score}, findings: ${report.findings.length})`);
   }

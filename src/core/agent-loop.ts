@@ -103,6 +103,9 @@ export class AgentLoop {
       // Call LLM
       const response = await this.callLLM(systemPrompt);
 
+      // Accumulate token usage in trace
+      this.tracing.addTokens(response.usage?.inputTokens || 0, response.usage?.outputTokens || 0);
+
       // Persist assistant message
       const assistantMsg: Message = {
         role: "assistant",

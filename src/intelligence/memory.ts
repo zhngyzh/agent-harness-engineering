@@ -59,9 +59,15 @@ class TFIDF {
     this.docs.push(tokens);
     this.docCount++;
 
-    // Update IDF
-    const unique = new Set(tokens);
-    for (const token of unique) {
+    // Update IDF for ALL tokens (not just the new document's tokens)
+    // to ensure earlier documents' IDF values are recalculated after each insertion
+    const allTokens = new Set<string>();
+    for (const doc of this.docs) {
+      for (const token of doc) {
+        allTokens.add(token);
+      }
+    }
+    for (const token of allTokens) {
       const count = this.docs.filter((d) => d.includes(token)).length;
       this.idf.set(token, Math.log(this.docCount / count));
     }
