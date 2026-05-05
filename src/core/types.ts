@@ -48,7 +48,7 @@ export interface ToolParameter {
   description: string;
   enum?: (string | number)[];
   items?: ToolParameter;
-  properties?: Record<string, ToolParameter>;
+  properties?: Record<string, unknown>;
   required?: string[];
 }
 

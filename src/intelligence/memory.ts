@@ -59,8 +59,10 @@ class TFIDF {
     this.docs.push(tokens);
     this.docCount++;
 
-    // Update IDF for ALL tokens (not just the new document's tokens)
-    // to ensure earlier documents' IDF values are recalculated after each insertion
+    // Update IDF for ALL tokens across ALL documents
+    // so that earlier documents' tokens are recalculated after each insertion.
+    // Without this, the first document's tokens would always have IDF=0
+    // (since docCount===1 means log(1/1)=0), making them unsearchable.
     const allTokens = new Set<string>();
     for (const doc of this.docs) {
       for (const token of doc) {
@@ -68,8 +70,8 @@ class TFIDF {
       }
     }
     for (const token of allTokens) {
-      const count = this.docs.filter((d) => d.includes(token)).length;
-      this.idf.set(token, Math.log(this.docCount / count));
+      const df = this.docs.filter((d) => d.includes(token)).length;
+      this.idf.set(token, Math.log(this.docCount / df));
     }
 
     return this.docs.length - 1;

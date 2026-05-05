@@ -50,7 +50,8 @@ export interface ScanResult {
 }
 
 // Structural markers that indicate role confusion
-// Note: No /g flag — .test() with /g causes lastIndex state corruption
+// IMPORTANT: No /g flag — .test() with /g causes lastIndex state corruption,
+// leading to alternating true/false results on repeated scans.
 const ROLE_MARKERS = [
   /\b(assistant|system|user|human|ai|bot)\s*:/i,
   /\b(you are|i am|act as|pretend to be|roleplay as)\b/i,
@@ -58,7 +59,6 @@ const ROLE_MARKERS = [
 ];
 
 // Delimiter patterns that could confuse the model
-// Note: No /g flag — .test() with /g causes lastIndex state corruption
 const DELIMITER_PATTERNS = [
   /<system>/i,
   /<\/system>/i,
