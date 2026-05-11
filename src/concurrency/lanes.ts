@@ -31,7 +31,7 @@ export class LaneQueue {
 
 	constructor(
 		public readonly name: string,
-		private maxConcurrency,
+		private maxConcurrency: number,
 		private log: Logger,
 	) {}
 
