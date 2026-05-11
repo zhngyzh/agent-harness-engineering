@@ -18,177 +18,190 @@
  *   - Plan approval FSM (submit -> approve/reject)
  */
 
-import { existsSync, mkdirSync, appendFileSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { randomUUID } from "node:crypto";
+import {
+	appendFileSync,
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	readdirSync,
+	writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
 import { Logger } from "../observability/logger.js";
 
 export type MessageType =
-  | "message"
-  | "broadcast"
-  | "shutdown_request"
-  | "shutdown_response"
-  | "plan_approval_response";
+	| "message"
+	| "broadcast"
+	| "shutdown_request"
+	| "shutdown_response"
+	| "plan_approval_response";
 
 export interface TeamMessage {
-  id: string;
-  type: MessageType;
-  from: string;
-  to: string; // agent name or "broadcast"
-  content: string;
-  request_id?: string;
-  timestamp: string;
-  read: boolean;
+	id: string;
+	type: MessageType;
+	from: string;
+	to: string; // agent name or "broadcast"
+	content: string;
+	request_id?: string;
+	timestamp: string;
+	read: boolean;
 }
 
 export interface TeamMember {
-  name: string;
-  role: string;
-  inboxPath: string;
+	name: string;
+	role: string;
+	inboxPath: string;
 }
 
 export class TeamMailbox {
-  private teamDir: string;
-  private log = new Logger("team");
+	private teamDir: string;
+	private log = new Logger("team");
 
-  constructor(workspaceDir: string) {
-    this.teamDir = join(workspaceDir, ".team");
-  }
+	constructor(workspaceDir: string) {
+		this.teamDir = join(workspaceDir, ".team");
+	}
 
-  /** Initialize the team directory */
-  init(): void {
-    mkdirSync(this.teamDir, { recursive: true });
-    mkdirSync(join(this.teamDir, "inbox"), { recursive: true });
-    this.log.info("Team mailbox initialized");
-  }
+	/** Initialize the team directory */
+	init(): void {
+		mkdirSync(this.teamDir, { recursive: true });
+		mkdirSync(join(this.teamDir, "inbox"), { recursive: true });
+		this.log.info("Team mailbox initialized");
+	}
 
-  /** Register a team member (creates their inbox) */
-  registerMember(name: string, role: string): TeamMember {
-    const inboxPath = join(this.teamDir, "inbox", name);
-    mkdirSync(inboxPath, { recursive: true });
+	/** Register a team member (creates their inbox) */
+	registerMember(name: string, role: string): TeamMember {
+		const inboxPath = join(this.teamDir, "inbox", name);
+		mkdirSync(inboxPath, { recursive: true });
 
-    const member: TeamMember = { name, role, inboxPath };
-    this.log.info(`Team member registered: ${name} (${role})`);
-    return member;
-  }
+		const member: TeamMember = { name, role, inboxPath };
+		this.log.info(`Team member registered: ${name} (${role})`);
+		return member;
+	}
 
-  /** Send a message to an agent's inbox */
-  send(message: Omit<TeamMessage, "id" | "timestamp" | "read">): string {
-    const id = randomUUID().slice(0, 8);
-    const fullMessage: TeamMessage = {
-      ...message,
-      id,
-      timestamp: new Date().toISOString(),
-      read: false,
-    };
+	/** Send a message to an agent's inbox */
+	send(message: Omit<TeamMessage, "id" | "timestamp" | "read">): string {
+		const id = randomUUID().slice(0, 8);
+		const fullMessage: TeamMessage = {
+			...message,
+			id,
+			timestamp: new Date().toISOString(),
+			read: false,
+		};
 
-    if (message.to === "broadcast") {
-      // Send to all members except sender
-      const members = this.listMembers();
-      for (const member of members) {
-        if (member.name !== message.from) {
-          this.writeToInbox(member.name, fullMessage);
-        }
-      }
-    } else {
-      this.writeToInbox(message.to, fullMessage);
-    }
+		if (message.to === "broadcast") {
+			// Send to all members except sender
+			const members = this.listMembers();
+			for (const member of members) {
+				if (member.name !== message.from) {
+					this.writeToInbox(member.name, fullMessage);
+				}
+			}
+		} else {
+			this.writeToInbox(message.to, fullMessage);
+		}
 
-    this.log.debug(`Message sent: ${message.from} -> ${message.to} (${message.type})`);
-    return id;
-  }
+		this.log.debug(
+			`Message sent: ${message.from} -> ${message.to} (${message.type})`,
+		);
+		return id;
+	}
 
-  /** Read unread messages from an inbox */
-  readInbox(agentName: string, markRead: boolean = true): TeamMessage[] {
-    const inboxPath = join(this.teamDir, "inbox", agentName);
-    if (!existsSync(inboxPath)) return [];
+	/** Read unread messages from an inbox */
+	readInbox(agentName: string, markRead = true): TeamMessage[] {
+		const inboxPath = join(this.teamDir, "inbox", agentName);
+		if (!existsSync(inboxPath)) return [];
 
-    const messages: TeamMessage[] = [];
-    const files = readdirSync(inboxPath).filter((f) => f.endsWith(".jsonl"));
+		const messages: TeamMessage[] = [];
+		const files = readdirSync(inboxPath).filter((f) => f.endsWith(".jsonl"));
 
-    for (const file of files) {
-      const filePath = join(inboxPath, file);
-      const content = readFileSync(filePath, "utf-8");
-      const lines = content.split("\n").filter((l) => l.trim());
+		for (const file of files) {
+			const filePath = join(inboxPath, file);
+			const content = readFileSync(filePath, "utf-8");
+			const lines = content.split("\n").filter((l) => l.trim());
 
-      const unreadLines: string[] = [];
-      for (const line of lines) {
-        try {
-          const msg: TeamMessage = JSON.parse(line);
-          if (!msg.read) {
-            messages.push(msg);
-            if (markRead) {
-              msg.read = true;
-            }
-          }
-          unreadLines.push(JSON.stringify(msg));
-        } catch {
-          unreadLines.push(line);
-        }
-      }
+			const unreadLines: string[] = [];
+			for (const line of lines) {
+				try {
+					const msg: TeamMessage = JSON.parse(line);
+					if (!msg.read) {
+						messages.push(msg);
+						if (markRead) {
+							msg.read = true;
+						}
+					}
+					unreadLines.push(JSON.stringify(msg));
+				} catch {
+					unreadLines.push(line);
+				}
+			}
 
-      // Rewrite with updated read status
-      if (markRead) {
-        writeFileSync(filePath, unreadLines.join("\n") + "\n", "utf-8");
-      }
-    }
+			// Rewrite with updated read status
+			if (markRead) {
+				writeFileSync(filePath, `${unreadLines.join("\n")}\n`, "utf-8");
+			}
+		}
 
-    return messages;
-  }
+		return messages;
+	}
 
-  /** Count unread messages in an inbox */
-  countUnread(agentName: string): number {
-    return this.readInbox(agentName, false).length;
-  }
+	/** Count unread messages in an inbox */
+	countUnread(agentName: string): number {
+		return this.readInbox(agentName, false).length;
+	}
 
-  /** List all team members */
-  listMembers(): TeamMember[] {
-    const inboxDir = join(this.teamDir, "inbox");
-    if (!existsSync(inboxDir)) return [];
+	/** List all team members */
+	listMembers(): TeamMember[] {
+		const inboxDir = join(this.teamDir, "inbox");
+		if (!existsSync(inboxDir)) return [];
 
-    return readdirSync(inboxDir, { withFileTypes: true })
-      .filter((e) => e.isDirectory())
-      .map((e) => ({
-        name: e.name,
-        role: "agent",
-        inboxPath: join(inboxDir, e.name),
-      }));
-  }
+		return readdirSync(inboxDir, { withFileTypes: true })
+			.filter((e) => e.isDirectory())
+			.map((e) => ({
+				name: e.name,
+				role: "agent",
+				inboxPath: join(inboxDir, e.name),
+			}));
+	}
 
-  /** Get team stats */
-  getStats(): { members: number; totalMessages: number; unreadMessages: number } {
-    const members = this.listMembers();
-    let totalMessages = 0;
-    let unreadMessages = 0;
+	/** Get team stats */
+	getStats(): {
+		members: number;
+		totalMessages: number;
+		unreadMessages: number;
+	} {
+		const members = this.listMembers();
+		let totalMessages = 0;
+		let unreadMessages = 0;
 
-    for (const member of members) {
-      const inboxPath = join(this.teamDir, "inbox", member.name);
-      if (!existsSync(inboxPath)) continue;
+		for (const member of members) {
+			const inboxPath = join(this.teamDir, "inbox", member.name);
+			if (!existsSync(inboxPath)) continue;
 
-      const files = readdirSync(inboxPath).filter((f) => f.endsWith(".jsonl"));
-      for (const file of files) {
-        const content = readFileSync(join(inboxPath, file), "utf-8");
-        const lines = content.split("\n").filter((l) => l.trim());
-        for (const line of lines) {
-          try {
-            const msg: TeamMessage = JSON.parse(line);
-            totalMessages++;
-            if (!msg.read) unreadMessages++;
-          } catch {
-            // skip
-          }
-        }
-      }
-    }
+			const files = readdirSync(inboxPath).filter((f) => f.endsWith(".jsonl"));
+			for (const file of files) {
+				const content = readFileSync(join(inboxPath, file), "utf-8");
+				const lines = content.split("\n").filter((l) => l.trim());
+				for (const line of lines) {
+					try {
+						const msg: TeamMessage = JSON.parse(line);
+						totalMessages++;
+						if (!msg.read) unreadMessages++;
+					} catch {
+						// skip
+					}
+				}
+			}
+		}
 
-    return { members: members.length, totalMessages, unreadMessages };
-  }
+		return { members: members.length, totalMessages, unreadMessages };
+	}
 
-  /** Write a message to an agent's inbox */
-  private writeToInbox(agentName: string, message: TeamMessage): void {
-    const inboxPath = join(this.teamDir, "inbox", agentName);
-    mkdirSync(inboxPath, { recursive: true });
-    const filePath = join(inboxPath, "messages.jsonl");
-    appendFileSync(filePath, `${JSON.stringify(message)}\n`, "utf-8");
-  }
+	/** Write a message to an agent's inbox */
+	private writeToInbox(agentName: string, message: TeamMessage): void {
+		const inboxPath = join(this.teamDir, "inbox", agentName);
+		mkdirSync(inboxPath, { recursive: true });
+		const filePath = join(inboxPath, "messages.jsonl");
+		appendFileSync(filePath, `${JSON.stringify(message)}\n`, "utf-8");
+	}
 }

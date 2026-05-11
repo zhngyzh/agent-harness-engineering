@@ -54,14 +54,14 @@ export const MAX_TOTAL_RETRIES = 160;
 // ---------- Bootstrap Files ----------
 /** Files loaded in order during bootstrap */
 export const BOOTSTRAP_FILES = [
-  "SOUL.md",
-  "IDENTITY.md",
-  "TOOLS.md",
-  "USER.md",
-  "HEARTBEAT.md",
-  "BOOTSTRAP.md",
-  "AGENTS.md",
-  "MEMORY.md",
+	"SOUL.md",
+	"IDENTITY.md",
+	"TOOLS.md",
+	"USER.md",
+	"HEARTBEAT.md",
+	"BOOTSTRAP.md",
+	"AGENTS.md",
+	"MEMORY.md",
 ] as const;
 
 // ---------- Session ----------
@@ -75,15 +75,15 @@ export const SESSION_META_FILE_SUFFIX = "_meta.json";
 // ---------- Security ----------
 /** Patterns that indicate prompt injection attempts */
 export const INJECTION_PATTERNS = [
-  /ignore\s+(previous|all|above)\s+instructions/i,
-  /system\s+prompt\s+(override|replace|ignore)/i,
-  /you\s+are\s+now\s+(a|an|the)/i,
-  /disregard\s+(your|all)\s+(previous|prior|instructions)/i,
-  /\[SYSTEM\s*[:\]]/i,
-  /<system>/i,
-  /new\s+persona/i,
-  /jailbreak/i,
-  /DAN\s+mode/i,
+	/ignore\s+(previous|all|above)\s+instructions/i,
+	/system\s+prompt\s+(override|replace|ignore)/i,
+	/you\s+are\s+now\s+(a|an|the)/i,
+	/disregard\s+(your|all)\s+(previous|prior|instructions)/i,
+	/\[SYSTEM\s*[:\]]/i,
+	/<system>/i,
+	/new\s+persona/i,
+	/jailbreak/i,
+	/DAN\s+mode/i,
 ] as const;
 
 // ---------- Cache ----------

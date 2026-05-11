@@ -17,217 +17,248 @@
  * - Every tool error is caught and fed back to the model for self-repair.
  */
 
-import type {
-  AgentConfig,
-  AgentEvent,
-  EventHandler,
-  LLMClient,
-  Message,
-  MessageContent,
-  ToolDefinition,
-} from "./types.js";
-import { DEFAULT_CONFIG } from "./types.js";
-import { ToolRegistry, createDefaultRegistry } from "./tool-registry.js";
-import { SessionStore } from "./session.js";
 import { EventBus } from "../observability/events.js";
 import { Tracing } from "../observability/tracing.js";
+import { SessionStore } from "./session.js";
+import { type ToolRegistry, createDefaultRegistry } from "./tool-registry.js";
+import type {
+	AgentConfig,
+	AgentEvent,
+	EventHandler,
+	LLMClient,
+	Message,
+	MessageContent,
+	ToolDefinition,
+} from "./types.js";
+import { DEFAULT_CONFIG } from "./types.js";
 
 export interface AgentLoopOptions {
-  config?: Partial<AgentConfig>;
-  llm?: LLMClient;
-  tools?: ToolRegistry;
-  session?: SessionStore;
-  eventBus?: EventBus;
-  tracing?: Tracing;
+	config?: Partial<AgentConfig>;
+	llm?: LLMClient;
+	tools?: ToolRegistry;
+	session?: SessionStore;
+	eventBus?: EventBus;
+	tracing?: Tracing;
 }
 
 export class AgentLoop {
-  readonly config: AgentConfig;
-  readonly llm: LLMClient;
-  readonly tools: ToolRegistry;
-  readonly session: SessionStore;
-  readonly events: EventBus;
-  readonly tracing: Tracing;
+	readonly config: AgentConfig;
+	readonly llm: LLMClient;
+	readonly tools: ToolRegistry;
+	readonly session: SessionStore;
+	readonly events: EventBus;
+	readonly tracing: Tracing;
 
-  private messages: Message[] = [];
-  private turnCount = 0;
-  private eventHandlers: EventHandler[] = [];
-  private aborted = false;
+	private messages: Message[] = [];
+	private turnCount = 0;
+	private eventHandlers: EventHandler[] = [];
+	private aborted = false;
 
-  constructor(options: AgentLoopOptions = {}) {
-    this.config = { ...DEFAULT_CONFIG, ...options.config };
-    this.llm = options.llm!;
-    this.tools = options.tools || createDefaultRegistry();
-    this.session = options.session || new SessionStore(this.config.workspaceDir);
-    this.events = options.eventBus || new EventBus();
-    this.tracing = options.tracing || new Tracing(this.session.sessionId);
+	constructor(options: AgentLoopOptions = {}) {
+		this.config = { ...DEFAULT_CONFIG, ...options.config };
+		if (!options.llm) throw new Error("AgentLoop requires an LLM client");
+		this.llm = options.llm;
+		this.tools = options.tools || createDefaultRegistry();
+		this.session =
+			options.session || new SessionStore(this.config.workspaceDir);
+		this.events = options.eventBus || new EventBus();
+		this.tracing = options.tracing || new Tracing(this.session.sessionId);
 
-    // Wire up event -> tracing
-    this.events.on((event) => {
-      if (event.type === "tool_start" || event.type === "tool_end" || event.type === "tool_error") {
-        this.tracing.addToolSpan(event);
-      }
-    });
-  }
+		// Wire up event -> tracing
+		this.events.on((event) => {
+			if (
+				event.type === "tool_start" ||
+				event.type === "tool_end" ||
+				event.type === "tool_error"
+			) {
+				this.tracing.addToolSpan(event);
+			}
+		});
+	}
 
-  /** Register an event handler */
-  onEvent(handler: EventHandler): () => void {
-    this.eventHandlers.push(handler);
-    return () => {
-      const idx = this.eventHandlers.indexOf(handler);
-      if (idx !== -1) this.eventHandlers.splice(idx, 1);
-    };
-  }
+	/** Register an event handler */
+	onEvent(handler: EventHandler): () => void {
+		this.eventHandlers.push(handler);
+		return () => {
+			const idx = this.eventHandlers.indexOf(handler);
+			if (idx !== -1) this.eventHandlers.splice(idx, 1);
+		};
+	}
 
-  /** Send a user message and run the agent loop */
-  async sendMessage(userInput: string, systemPrompt: string): Promise<string> {
-    this.aborted = false;
-    this.turnCount = 0;
+	/** Send a user message and run the agent loop */
+	async sendMessage(userInput: string, systemPrompt: string): Promise<string> {
+		this.aborted = false;
+		this.turnCount = 0;
 
-    // Append user message
-    this.messages.push({ role: "user", content: [{ type: "text", text: userInput }] });
+		// Append user message
+		this.messages.push({
+			role: "user",
+			content: [{ type: "text", text: userInput }],
+		});
 
-    this.emit("agent_start", { input: userInput });
+		this.emit("agent_start", { input: userInput });
 
-    let finalText = "";
+		let finalText = "";
 
-    while (this.turnCount < this.config.maxTurns) {
-      if (this.aborted) {
-        this.emit("error", { reason: "aborted" });
-        break;
-      }
+		while (this.turnCount < this.config.maxTurns) {
+			if (this.aborted) {
+				this.emit("error", { reason: "aborted" });
+				break;
+			}
 
-      this.turnCount++;
-      this.emit("turn_start", { turn: this.turnCount });
+			this.turnCount++;
+			this.emit("turn_start", { turn: this.turnCount });
 
-      // Call LLM
-      const response = await this.callLLM(systemPrompt);
+			// Call LLM
+			const response = await this.callLLM(systemPrompt);
 
-      // Accumulate token usage in trace
-      this.tracing.addTokens(response.usage?.inputTokens || 0, response.usage?.outputTokens || 0);
+			// Accumulate token usage in trace
+			this.tracing.addTokens(
+				response.usage?.inputTokens || 0,
+				response.usage?.outputTokens || 0,
+			);
 
-      // Persist assistant message
-      const assistantMsg: Message = {
-        role: "assistant",
-        content: response.content,
-      };
-      this.messages.push(assistantMsg);
+			// Persist assistant message
+			const assistantMsg: Message = {
+				role: "assistant",
+				content: response.content,
+			};
+			this.messages.push(assistantMsg);
 
-      // Check stop reason
-      if (response.stopReason === "end_turn" || response.stopReason === "stop_sequence") {
-        finalText = this.extractText(response.content);
-        this.emit("agent_end", { turns: this.turnCount, finalText });
-        break;
-      }
+			// Check stop reason
+			if (
+				response.stopReason === "end_turn" ||
+				response.stopReason === "stop_sequence"
+			) {
+				finalText = this.extractText(response.content);
+				this.emit("agent_end", { turns: this.turnCount, finalText });
+				break;
+			}
 
-      if (response.stopReason === "max_tokens") {
-        this.emit("error", { reason: "max_tokens", turn: this.turnCount });
-        finalText = this.extractText(response.content);
-        break;
-      }
+			if (response.stopReason === "max_tokens") {
+				this.emit("error", { reason: "max_tokens", turn: this.turnCount });
+				finalText = this.extractText(response.content);
+				break;
+			}
 
-      // Handle tool use
-      if (response.stopReason === "tool_use") {
-        const toolResults = await this.executeTools(response.content);
-        this.messages.push({ role: "user", content: toolResults });
-        continue;
-      }
-    }
+			// Handle tool use
+			if (response.stopReason === "tool_use") {
+				const toolResults = await this.executeTools(response.content);
+				this.messages.push({ role: "user", content: toolResults });
+			}
+		}
 
-    if (this.turnCount >= this.config.maxTurns) {
-      this.emit("error", { reason: "max_turns", maxTurns: this.config.maxTurns });
-      finalText = this.messages
-        .filter((m) => m.role === "assistant")
-        .map((m) => this.extractText(Array.isArray(m.content) ? m.content : [{ type: "text", text: m.content }]))
-        .join("\n");
-    }
+		if (this.turnCount >= this.config.maxTurns) {
+			this.emit("error", {
+				reason: "max_turns",
+				maxTurns: this.config.maxTurns,
+			});
+			finalText = this.messages
+				.filter((m) => m.role === "assistant")
+				.map((m) =>
+					this.extractText(
+						Array.isArray(m.content)
+							? m.content
+							: [{ type: "text", text: m.content }],
+					),
+				)
+				.join("\n");
+		}
 
-    // Persist session
-    await this.session.appendMessages(this.messages);
+		// Persist session
+		await this.session.appendMessages(this.messages);
 
-    return finalText || "(no response)";
-  }
+		return finalText || "(no response)";
+	}
 
-  /** Abort the current loop */
-  abort(): void {
-    this.aborted = true;
-  }
+	/** Abort the current loop */
+	abort(): void {
+		this.aborted = true;
+	}
 
-  /** Get current message history */
-  getMessages(): ReadonlyArray<Message> {
-    return this.messages;
-  }
+	/** Get current message history */
+	getMessages(): ReadonlyArray<Message> {
+		return this.messages;
+	}
 
-  /** Reset message history (new conversation) */
-  reset(): void {
-    this.messages = [];
-    this.turnCount = 0;
-  }
+	/** Reset message history (new conversation) */
+	reset(): void {
+		this.messages = [];
+		this.turnCount = 0;
+	}
 
-  // ============================================================
-  // Private
-  // ============================================================
+	// ============================================================
+	// Private
+	// ============================================================
 
-  private async callLLM(systemPrompt: string) {
-    const toolDefs: ToolDefinition[] = this.tools.definitions();
+	private async callLLM(systemPrompt: string) {
+		const toolDefs: ToolDefinition[] = this.tools.definitions();
 
-    // Split system prompt at cache boundary for prefix caching
-    const finalSystem = systemPrompt; // Cache optimization in Phase 2
+		// Split system prompt at cache boundary for prefix caching
+		const finalSystem = systemPrompt; // Cache optimization in Phase 2
 
-    return this.llm.messages(
-      this.config.model,
-      finalSystem,
-      [...this.messages],
-      toolDefs,
-      this.config.maxTokens,
-    );
-  }
+		return this.llm.messages(
+			this.config.model,
+			finalSystem,
+			[...this.messages],
+			toolDefs,
+			this.config.maxTokens,
+		);
+	}
 
-  private async executeTools(content: MessageContent[]) {
-    const toolUses = content.filter((c): c is MessageContent & { type: "tool_use" } => c.type === "tool_use");
-    const results = await Promise.all(
-      toolUses.map(async (toolUse) => {
-        this.emit("tool_start", { tool: toolUse.name, input: toolUse.input });
-        try {
-          const output = await this.tools.execute(toolUse.name, toolUse.input as Record<string, unknown>);
-          this.emit("tool_end", { tool: toolUse.name, outputLength: output.length });
-          return {
-            type: "tool_result" as const,
-            tool_use_id: toolUse.id,
-            content: output,
-          };
-        } catch (err) {
-          const error = err as Error;
-          this.emit("tool_error", { tool: toolUse.name, error: error.message });
-          return {
-            type: "tool_result" as const,
-            tool_use_id: toolUse.id,
-            content: `Error: ${error.message}`,
-            is_error: true,
-          };
-        }
-      }),
-    );
-    return results;
-  }
+	private async executeTools(content: MessageContent[]) {
+		const toolUses = content.filter(
+			(c): c is MessageContent & { type: "tool_use" } => c.type === "tool_use",
+		);
+		const results = await Promise.all(
+			toolUses.map(async (toolUse) => {
+				this.emit("tool_start", { tool: toolUse.name, input: toolUse.input });
+				try {
+					const output = await this.tools.execute(
+						toolUse.name,
+						toolUse.input as Record<string, unknown>,
+					);
+					this.emit("tool_end", {
+						tool: toolUse.name,
+						outputLength: output.length,
+					});
+					return {
+						type: "tool_result" as const,
+						tool_use_id: toolUse.id,
+						content: output,
+					};
+				} catch (err) {
+					const error = err as Error;
+					this.emit("tool_error", { tool: toolUse.name, error: error.message });
+					return {
+						type: "tool_result" as const,
+						tool_use_id: toolUse.id,
+						content: `Error: ${error.message}`,
+						is_error: true,
+					};
+				}
+			}),
+		);
+		return results;
+	}
 
-  private extractText(content: MessageContent[]): string {
-    return content
-      .filter((c): c is MessageContent & { type: "text" } => c.type === "text")
-      .map((c) => c.text)
-      .join("\n");
-  }
+	private extractText(content: MessageContent[]): string {
+		return content
+			.filter((c): c is MessageContent & { type: "text" } => c.type === "text")
+			.map((c) => c.text)
+			.join("\n");
+	}
 
-  private emit(type: AgentEvent["type"], data: Record<string, unknown> = {}) {
-    const event: AgentEvent = {
-      type,
-      sessionId: this.session.sessionId,
-      timestamp: new Date().toISOString(),
-      data,
-    };
-    this.events.emit(event);
-    for (const handler of this.eventHandlers) {
-      handler(event);
-    }
-  }
+	private emit(type: AgentEvent["type"], data: Record<string, unknown> = {}) {
+		const event: AgentEvent = {
+			type,
+			sessionId: this.session.sessionId,
+			timestamp: new Date().toISOString(),
+			data,
+		};
+		this.events.emit(event);
+		for (const handler of this.eventHandlers) {
+			handler(event);
+		}
+	}
 }
